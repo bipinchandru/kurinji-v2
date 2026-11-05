@@ -56,7 +56,10 @@ export default function App() {
         <div className="header-brand-wrap">
           <KurinjiLogo size={32} />
           <div className="header-brand-titles">
-            <span className="brand-main-title">Kurinji</span>
+            <span className="brand-main-title">KURINJI</span>
+            <span className="brand-subtitle">
+              Every child's voice, every child's language
+            </span>
           </div>
         </div>
 
