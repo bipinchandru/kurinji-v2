@@ -54,15 +54,9 @@ export default function App() {
       {/* Top Application Header */}
       <header className="primary-top-header">
         <div className="header-brand-wrap">
-          <KurinjiLogo size={28} />
+          <KurinjiLogo size={32} />
           <div className="header-brand-titles">
-            <div className="title-row">
-              <span className="brand-main-title">KURINJI</span>
-              <span className="brand-stage-badge">Primary Learning Desk</span>
-            </div>
-            <span className="brand-subtitle">
-              Indigenous Bridge System • Mother Tongue to Tamil & English (K-5)
-            </span>
+            <span className="brand-main-title">Kurinji</span>
           </div>
         </div>
 
