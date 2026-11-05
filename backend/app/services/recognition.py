@@ -85,7 +85,7 @@ def recognize_spoken_word(
     if not ref_entries:
         return {
             "status": "no_references",
-            "message": f"No reference embeddings found in database for language '{language or 'all'}'.",
+            "message": "Speech AI requires GEMINI_API_KEY in .env on the server for real-time acoustic recognition.",
             "word_id": None,
             "language": language,
             "tamil_meaning": None,

@@ -83,6 +83,27 @@ def recognize_with_gemini(
     target_lang = language if language in ("Badaga", "Marwari") else None
     vocab_entries = list_vocabulary(language=target_lang, limit=1000)
     if not vocab_entries:
+        # Fallback to curriculum cards if SQLite vocabulary table is not seeded
+        modules_file = PROJECT_ROOT / "backend" / "data" / "learning_modules.json"
+        if modules_file.is_file():
+            try:
+                with open(modules_file, "r", encoding="utf-8") as f:
+                    cdata = json.load(f)
+                    vocab_entries = []
+                    for c in cdata.get("cards", []):
+                        wid = c.get("word_id", c.get("id"))
+                        eng = c.get("english", {}).get("word", "")
+                        tam = c.get("tamil", {}).get("word", "")
+                        wrd = c.get("badaga", {}).get("word", "") if target_lang != "Marwari" else c.get("marwari", {}).get("word", "")
+                        vocab_entries.append({
+                            "word_id": wid,
+                            "english_meaning": eng,
+                            "tamil_meaning": tam,
+                            "optional_romanised_pronunciation": wrd,
+                        })
+            except Exception:
+                pass
+    if not vocab_entries:
         return None
 
     # Format wordbank into a compact linguistic reference
@@ -234,6 +255,24 @@ Respond ONLY with a valid JSON object matching this schema:
         # Retrieve 100% human-verified meaning from SQLite database
         vocab = get_vocabulary_by_id(matched_word_id)
         if not vocab:
+            # Fallback to curriculum concept cards
+            modules_file = PROJECT_ROOT / "backend" / "data" / "learning_modules.json"
+            if modules_file.is_file():
+                try:
+                    with open(modules_file, "r", encoding="utf-8") as f:
+                        cdata = json.load(f)
+                        for c in cdata.get("cards", []):
+                            if c.get("word_id") == matched_word_id or c.get("id") == matched_word_id:
+                                vocab = {
+                                    "word_id": matched_word_id,
+                                    "language": target_lang or "Badaga",
+                                    "tamil_meaning": c.get("tamil", {}).get("word", ""),
+                                    "english_meaning": c.get("english", {}).get("word", ""),
+                                }
+                                break
+                except Exception:
+                    pass
+        if not vocab:
             return None
 
         # Fetch reference clips for audio pronunciation playback
@@ -323,7 +362,98 @@ def match_text_transliteration(
             ],
         }
 
-    # 2. If no direct match, use Gemini with the closed-vocabulary wordbank constraint
+    # 2. Check local curriculum concept cards with intelligent fuzzy matching (offline, 0ms)
+    modules_file = PROJECT_ROOT / "backend" / "data" / "learning_modules.json"
+    if modules_file.is_file():
+        try:
+            with open(modules_file, "r", encoding="utf-8") as f:
+                cards = json.load(f).get("cards", [])
+
+            import re
+            import difflib
+
+            q_norm = clean_query.lower().replace("-", "").strip()
+            q_collapsed = re.sub(r'(.)\1+', r'\1', q_norm)
+
+            best_card = None
+            best_score = 0.0
+
+            for c in cards:
+                b_word = c.get("badaga", {}).get("word", "").lower().replace("-", "")
+                b_pron = c.get("badaga", {}).get("pronunciation", "").lower().replace("-", "")
+                b_tam = c.get("badaga", {}).get("tamil_script", "").lower()
+                m_word = c.get("marwari", {}).get("word", "").lower().replace("-", "")
+                m_pron = c.get("marwari", {}).get("pronunciation", "").lower().replace("-", "")
+                m_tam = c.get("marwari", {}).get("tamil_script", "").lower()
+                eng_word = c.get("english", {}).get("word", "").lower()
+                tam_word = c.get("tamil", {}).get("word", "").lower()
+                cid = c.get("id", "").lower()
+
+                native_targets = [b_word, b_pron, b_tam] if target_lang != "Marwari" else [m_word, m_pron, m_tam]
+                all_targets = native_targets + [eng_word, tam_word, cid]
+
+                # Exact match on any target
+                if any(q_norm == t for t in all_targets if t):
+                    best_card = c
+                    best_score = 1.0
+                    break
+
+                # Collapsed consonant match (e.g. "kanu" <-> "kannu", "pal" <-> "pallu")
+                collapsed_targets = [re.sub(r'(.)\1+', r'\1', t) for t in native_targets if t]
+                if q_collapsed in collapsed_targets:
+                    best_card = c
+                    best_score = 0.95
+                    break
+
+                # English word match (e.g. "eye", "head", "nose")
+                if q_norm == eng_word or (len(q_norm) >= 3 and q_norm in eng_word):
+                    best_card = c
+                    best_score = 1.0
+                    break
+
+                # Substring / Prefix match
+                if any(t.startswith(q_norm) or q_norm.startswith(t) for t in native_targets if len(t) >= 3 and len(q_norm) >= 3):
+                    if best_score < 0.85:
+                        best_card = c
+                        best_score = 0.85
+
+                # Fuzzy ratio
+                for t in native_targets:
+                    if t:
+                        ratio = difflib.SequenceMatcher(None, q_norm, t).ratio()
+                        if ratio >= 0.70 and ratio > best_score:
+                            best_card = c
+                            best_score = ratio
+
+            if best_card and best_score >= 0.70:
+                tam = best_card.get("tamil", {}).get("word", "")
+                eng = best_card.get("english", {}).get("word", "")
+                wid = best_card.get("word_id", best_card.get("id"))
+                return {
+                    "status": "recognized",
+                    "word_id": wid,
+                    "language": target_lang,
+                    "tamil_meaning": tam,
+                    "english_meaning": eng,
+                    "similarity": round(best_score, 2),
+                    "margin": 0.20,
+                    "message": f"Matched '{clean_query}' to {target_lang} concept card.",
+                    "learning_card": best_card,
+                    "ranked_candidates": [
+                        {
+                            "word_id": wid,
+                            "language": target_lang,
+                            "tamil_meaning": tam,
+                            "english_meaning": eng,
+                            "score": round(best_score, 2),
+                            "clip_matches": [],
+                        }
+                    ],
+                }
+        except Exception as e:
+            print(f"[Curriculum Text Search] Error: {e}")
+
+    # 3. If no direct or curriculum match, use Gemini with the closed-vocabulary wordbank constraint
     api_key = get_gemini_api_key()
     if not api_key:
         return {
