@@ -17,6 +17,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 from backend.app.config import (
+    PROJECT_ROOT,
     RAW_AUDIO_DIR,
     CLIPS_AUDIO_DIR,
     DEFAULT_SIMILARITY_THRESHOLD,
@@ -48,6 +49,7 @@ from backend.app.embeddings.storage import (
 )
 from backend.app.services.recognition import recognize_spoken_word
 from backend.app.services.gemini_recognition import is_gemini_available, match_text_transliteration
+from backend.app.services.tts_service import generate_neural_tts
 
 app = FastAPI(
     title="Badaga & Marwari Audio Recognition API",
@@ -414,6 +416,23 @@ def stream_audio_clip(clip_id: str):
         raise HTTPException(status_code=404, detail="Audio file missing on disk.")
 
     return FileResponse(str(audio_path), media_type="audio/wav")
+
+
+@app.get("/api/tts")
+async def get_neural_tts(
+    text: str = Query(..., min_length=1, max_length=500, description="Text to synthesize"),
+    lang: str = Query("ta", description="Language: 'ta' or 'en'"),
+):
+    """
+    Synthesizes crystal-clear studio quality speech using neural voices
+    (ta-IN-PallaviNeural for Tamil, en-US-JennyNeural for English).
+    Returns cached MP3 audio stream for instant playback.
+    """
+    try:
+        audio_path = await generate_neural_tts(text=text, lang=lang)
+        return FileResponse(str(audio_path), media_type="audio/mpeg")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"TTS synthesis failed: {str(e)}")
 
 
 # Mount static production frontend build if available (single-service Render deployment)

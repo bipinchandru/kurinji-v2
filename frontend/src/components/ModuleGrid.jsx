@@ -14,15 +14,22 @@ export default function ModuleGrid({
     ? cards.filter((c) => c.category === selectedModuleId)
     : cards;
 
-  // Quick pronunciation via Web Speech for Tamil and English
+  // Quick pronunciation via Neural AI Voice (with Web Speech fallback)
   const quickSpeak = (e, text, lang) => {
     e.stopPropagation();
-    if (!window.speechSynthesis || !text) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = lang;
-    utterance.rate = 0.82;
-    window.speechSynthesis.speak(utterance);
+    if (!text) return;
+
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+
+    const langCode = lang && lang.startsWith('ta') ? 'ta' : 'en';
+    const audio = new Audio(`/api/tts?text=${encodeURIComponent(text)}&lang=${langCode}`);
+    audio.play().catch(() => {
+      if (!window.speechSynthesis) return;
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = lang;
+      utterance.rate = 0.92;
+      window.speechSynthesis.speak(utterance);
+    });
   };
 
   return (

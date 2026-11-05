@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Volume2, X, ChevronLeft, ChevronRight, Check, Play } from 'lucide-react';
 import { Illustration } from './Illustrations';
 
@@ -13,8 +13,9 @@ export default function LearningCardModal({
 }) {
   const [playingState, setPlayingState] = useState(null); // 'native' | 'tamil' | 'english' | letterId
   const [isPlayingNative, setIsPlayingNative] = useState(false);
+  const activeAudioRef = useRef(null);
 
-  // Keyboard navigation
+  // Keyboard navigation & audio cleanup on unmount
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') onClose();
@@ -22,22 +23,87 @@ export default function LearningCardModal({
       if (e.key === 'ArrowLeft' && hasPrev) onPrev();
     };
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      if (activeAudioRef.current) {
+        activeAudioRef.current.pause();
+        activeAudioRef.current = null;
+      }
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
   }, [hasNext, hasPrev, onNext, onPrev, onClose]);
+
+  // Pre-buffer audio for current card's letters and words in browser memory
+  useEffect(() => {
+    if (!card) return;
+    const itemsToPreload = [
+      { text: card.tamil?.word, lang: 'ta' },
+      ...(card.tamil?.letters || []).map((ch) => ({ text: ch, lang: 'ta' })),
+      { text: card.english?.word, lang: 'en' },
+      ...(card.english?.letters || []).map((ch) => ({ text: ch, lang: 'en' })),
+    ];
+    itemsToPreload.forEach(({ text, lang }) => {
+      if (!text) return;
+      const preAudio = new Audio(`/api/tts?text=${encodeURIComponent(text)}&lang=${lang}`);
+      preAudio.preload = 'auto';
+    });
+  }, [card]);
 
   if (!card) return null;
 
   const nativeInfo = selectedLanguage === 'Marwari' ? card.marwari : card.badaga;
 
-  // Speak via Web Speech API (for Tamil and English)
-  const speakText = (text, lang, key) => {
-    if (!window.speechSynthesis || !text) return;
+  // Speak via Studio-Grade Neural AI Voice (with Web Speech fallback)
+  const speakText = async (text, lang, key) => {
+    if (!text) return;
+
+    // Interrupt any currently playing audio or speech
+    if (activeAudioRef.current) {
+      activeAudioRef.current.pause();
+      activeAudioRef.current = null;
+    }
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+
+    setPlayingState(key);
+
+    const langCode = lang && lang.startsWith('ta') ? 'ta' : 'en';
+    const audioUrl = `/api/tts?text=${encodeURIComponent(text)}&lang=${langCode}`;
+
+    try {
+      const audio = new Audio(audioUrl);
+      activeAudioRef.current = audio;
+
+      audio.onended = () => {
+        setPlayingState(null);
+        activeAudioRef.current = null;
+      };
+
+      audio.onerror = () => {
+        activeAudioRef.current = null;
+        fallbackWebSpeech(text, lang, key);
+      };
+
+      await audio.play();
+    } catch {
+      fallbackWebSpeech(text, lang, key);
+    }
+  };
+
+  const fallbackWebSpeech = (text, lang, key) => {
+    if (!window.speechSynthesis || !text) {
+      setPlayingState(null);
+      return;
+    }
     window.speechSynthesis.cancel();
     setPlayingState(key);
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = lang;
-    utterance.rate = 0.82; // Friendly pace for primary school learners
+    utterance.rate = 0.92;
     utterance.onend = () => setPlayingState(null);
     utterance.onerror = () => setPlayingState(null);
     window.speechSynthesis.speak(utterance);
@@ -45,18 +111,17 @@ export default function LearningCardModal({
 
   // Play authentic native speaker audio from verified dataset
   const playNativeClip = async () => {
-    if (!card.word_id) return;
     setIsPlayingNative(true);
     setPlayingState('native');
 
-    try {
-      const res = await fetch(`/api/vocabulary/${card.word_id}`);
-      const data = await res.json();
+    // 1. Direct audio file provided in frontend/public/audio/
+    const directAudioUrl = selectedLanguage === 'Marwari'
+      ? card.marwari_audio_url
+      : card.badaga_audio_url;
 
-      if (data.recordings && data.recordings.length > 0) {
-        // Pick the primary recording clip
-        const clipId = data.recordings[0].clip_id;
-        const audio = new Audio(`/api/audio/playback/${clipId}`);
+    if (directAudioUrl) {
+      try {
+        const audio = new Audio(directAudioUrl);
         audio.onended = () => {
           setIsPlayingNative(false);
           setPlayingState(null);
@@ -66,14 +131,39 @@ export default function LearningCardModal({
           setPlayingState(null);
         };
         await audio.play();
-      } else {
-        setIsPlayingNative(false);
-        setPlayingState(null);
+        return;
+      } catch (err) {
+        console.warn('Direct audio play failed, falling back to API:', err);
       }
-    } catch {
-      setIsPlayingNative(false);
-      setPlayingState(null);
     }
+
+    // 2. Fallback: check dynamic backend recordings from database
+    if (card.word_id) {
+      try {
+        const res = await fetch(`/api/vocabulary/${card.word_id}`);
+        const data = await res.json();
+
+        if (data.recordings && data.recordings.length > 0) {
+          const clipId = data.recordings[0].clip_id;
+          const audio = new Audio(`/api/audio/playback/${clipId}`);
+          audio.onended = () => {
+            setIsPlayingNative(false);
+            setPlayingState(null);
+          };
+          audio.onerror = () => {
+            setIsPlayingNative(false);
+            setPlayingState(null);
+          };
+          await audio.play();
+          return;
+        }
+      } catch (err) {
+        console.error('API playback error:', err);
+      }
+    }
+
+    setIsPlayingNative(false);
+    setPlayingState(null);
   };
 
   return (

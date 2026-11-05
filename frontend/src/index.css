@@ -44,10 +44,18 @@
 
 html, body {
   min-height: 100%;
+  width: 100%;
+  overflow-x: hidden;
   background-color: var(--bg-app);
   color: var(--ink-primary);
   font-family: var(--font-family);
   -webkit-font-smoothing: antialiased;
+  touch-action: manipulation;
+}
+
+img, svg {
+  max-width: 100%;
+  height: auto;
 }
 
 .tamil-font {
@@ -356,10 +364,10 @@ html, body {
   margin-top: 2px;
 }
 
-/* Grid of Concept Cards */
+/* Grid of Concept Cards (Resilient auto-wrapping) */
 .cards-mosaic-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
   gap: 22px;
 }
 
@@ -987,3 +995,371 @@ html, body {
 .vocab-table tr:hover td {
   background: var(--bg-subtle);
 }
+
+/* ==========================================================================
+   Comprehensive Responsive Overhaul (Mobile, Tablet, Desktop)
+   ========================================================================== */
+
+/* 1. Large Tablets & Small Laptops (<= 1024px) */
+@media (max-width: 1024px) {
+  .learning-workspace-root {
+    padding: 16px 20px 40px;
+  }
+
+  .brand-main-title {
+    font-size: 2rem;
+  }
+
+  .cards-mosaic-grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+    gap: 18px;
+  }
+
+  .learning-modal-container {
+    width: min(800px, 92vw);
+    max-height: 92svh;
+  }
+}
+
+/* 2. Tablets & Mobile Landscape (<= 768px) */
+@media (max-width: 768px) {
+  .learning-workspace-root {
+    padding: 14px 16px 36px;
+  }
+
+  /* Top Header: Stack Brand and Action controls */
+  .primary-top-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    margin-bottom: 18px;
+    padding: 4px 0 16px;
+  }
+
+  .header-brand-wrap {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .brand-main-title {
+    font-size: 1.75rem;
+  }
+
+  .brand-subtitle {
+    font-size: 0.78rem;
+    line-height: 1.3;
+  }
+
+  .header-actions-group {
+    width: 100%;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .dialect-selector-group {
+    flex: 1;
+  }
+
+  .dialect-btn {
+    flex: 1;
+    text-align: center;
+    padding: 8px 12px;
+    font-size: 0.85rem;
+  }
+
+  .wordbank-toggle-btn {
+    padding: 8px 14px;
+    font-size: 0.82rem;
+  }
+
+  /* Voice Input & Search Bar: Stack for thumb ergonomics */
+  .direct-audio-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .audio-mic-action-group {
+    width: 100%;
+  }
+
+  .direct-mic-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 12px 18px;
+    font-size: 0.92rem;
+    min-height: 46px;
+  }
+
+  .quick-search-form {
+    width: 100%;
+    min-height: 42px;
+  }
+
+  .audio-status-notice {
+    width: 100%;
+    text-align: center;
+  }
+
+  /* Topic Filter Tabs: Touch friendly scroll */
+  .topics-nav-track {
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 8px;
+  }
+
+  .topic-tab-pill {
+    padding: 8px 14px;
+    min-height: 44px;
+  }
+
+  /* Concept Cards Grid */
+  .cards-mosaic-grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+    gap: 14px;
+  }
+
+  .card-illustration-frame {
+    height: 132px;
+  }
+
+  /* Modal Adaptations for Tablets */
+  .learning-modal-backdrop {
+    padding: 14px;
+  }
+
+  .learning-modal-container {
+    width: 100%;
+    max-width: 680px;
+    max-height: 94svh;
+  }
+
+  .modal-top-bar {
+    padding: 14px 18px;
+  }
+
+  .modal-scroll-area {
+    padding: 16px 18px 26px;
+    gap: 16px;
+  }
+
+  .modal-illustration-hero {
+    gap: 16px;
+    padding: 14px 18px;
+  }
+
+  .hero-english-title {
+    font-size: 1.55rem;
+  }
+
+  .hero-tamil-title {
+    font-size: 1.3rem;
+  }
+
+  .learning-tier-card {
+    padding: 14px 18px;
+  }
+}
+
+/* 3. Standard Mobile Phones (<= 540px) */
+@media (max-width: 540px) {
+  .learning-workspace-root {
+    padding: 10px 12px 28px;
+  }
+
+  .brand-main-title {
+    font-size: 1.5rem;
+  }
+
+  .brand-stage-badge {
+    font-size: 0.65rem;
+    padding: 3px 6px;
+  }
+
+  .brand-subtitle {
+    font-size: 0.72rem;
+  }
+
+  /* Single Column Concept Card Feed on Phones */
+  .cards-mosaic-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .concept-visual-card {
+    border-radius: 12px;
+  }
+
+  .card-illustration-frame {
+    height: 126px;
+  }
+
+  /* Make tap targets larger on mobile */
+  .inline-audio-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  /* Full Screen / Sheet Style Learning Card Modal */
+  .learning-modal-backdrop {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .learning-modal-container {
+    width: 100vw;
+    max-width: 100vw;
+    height: 96svh;
+    max-height: 96svh;
+    border-radius: 18px 18px 0 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+  }
+
+  .modal-top-bar {
+    padding: 12px 14px;
+  }
+
+  .modal-topic-badge {
+    font-size: 0.7rem;
+    padding: 3px 8px;
+  }
+
+  .modal-nav-btn {
+    padding: 6px 8px;
+    font-size: 0.78rem;
+  }
+
+  .modal-scroll-area {
+    padding: 12px 14px 24px;
+    gap: 12px;
+  }
+
+  /* Hero Section Stacks Vertically on Mobile */
+  .modal-illustration-hero {
+    flex-direction: column;
+    text-align: center;
+    padding: 14px 12px;
+    gap: 8px;
+  }
+
+  .hero-english-title {
+    font-size: 1.4rem;
+  }
+
+  .hero-tamil-title {
+    font-size: 1.2rem;
+  }
+
+  .learning-tier-card {
+    padding: 12px 12px;
+    gap: 10px;
+    border-radius: 10px;
+  }
+
+  .tier-header-bar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .tier-section-heading {
+    font-size: 0.88rem;
+  }
+
+  .native-audio-action-btn,
+  .bridge-listen-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 8px 12px;
+    min-height: 38px;
+  }
+
+  .native-spoken-text {
+    font-size: 1.35rem;
+  }
+
+  .native-script-text {
+    font-size: 1.05rem;
+  }
+
+  /* Phonics Alphabet Blocks for Mobile Thumbs */
+  .equation-chips-row {
+    gap: 6px;
+    row-gap: 8px;
+  }
+
+  .letter-unit-chip {
+    min-width: 38px;
+    height: 40px;
+    font-size: 1.15rem;
+    padding: 0 8px;
+    border-bottom-width: 3px;
+  }
+
+  .math-operator {
+    font-size: 1.05rem;
+  }
+
+  .blended-result-chip {
+    height: 40px;
+    font-size: 1.05rem;
+    padding: 0 14px;
+    border-bottom-width: 3px;
+  }
+
+  .usage-sentence-box {
+    font-size: 0.82rem;
+    padding: 8px 10px;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  /* Vocabulary Manager table scrolling on mobile */
+  .vocab-manager-panel {
+    padding: 14px;
+  }
+
+  .vocab-manager-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .vocab-search-row {
+    flex-direction: column;
+  }
+}
+
+/* 4. Compact / Very Small Phones (<= 380px) */
+@media (max-width: 380px) {
+  .learning-workspace-root {
+    padding: 8px 8px 24px;
+  }
+
+  .brand-main-title {
+    font-size: 1.35rem;
+  }
+
+  .brand-subtitle {
+    display: none; /* Hide verbose subtitle on ultra-compact screens */
+  }
+
+  .modal-nav-btn span {
+    display: none; /* Icon-only on tiny screens */
+  }
+
+  .letter-unit-chip {
+    min-width: 34px;
+    height: 36px;
+    font-size: 1rem;
+    padding: 0 6px;
+  }
+
+  .blended-result-chip {
+    height: 36px;
+    font-size: 0.95rem;
+    padding: 0 10px;
+  }
+}
+
