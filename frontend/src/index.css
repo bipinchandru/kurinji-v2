@@ -1037,17 +1037,29 @@ img, svg {
   }
 
   .header-brand-wrap {
-    justify-content: space-between;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 12px;
     width: 100%;
   }
 
+  .header-brand-titles {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+  }
+
   .brand-main-title {
-    font-size: 1.75rem;
+    font-size: 1.7rem;
+    line-height: 1.1;
   }
 
   .brand-subtitle {
-    font-size: 0.78rem;
+    font-size: 0.82rem;
     line-height: 1.3;
+    color: var(--ink-muted);
   }
 
   .header-actions-group {
@@ -1342,7 +1354,9 @@ img, svg {
   }
 
   .brand-subtitle {
-    display: none; /* Hide verbose subtitle on ultra-compact screens */
+    font-size: 0.72rem;
+    line-height: 1.25;
+    display: block;
   }
 
   .modal-nav-btn span {
