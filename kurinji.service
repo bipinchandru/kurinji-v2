@@ -3,7 +3,8 @@ Description=KURINJI Indigenous Bridge System - FastAPI Backend
 After=network.target
 
 [Service]
-User=root
+User=kurinji-v2
+Group=kurinji-v2
 WorkingDirectory=/var/www/kurinji
 ExecStart=/var/www/kurinji/.venv/bin/uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --workers 2
 Restart=always
